@@ -162,12 +162,14 @@ app.post("/api/signup", upload.single("img"), async (req, res) => {
       .status(201)
       .json({
         success: true,
+        token, // ⭐ ADD
         message: "Signup successful",
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
         },
+
       });
   } catch (err) {
     console.error("Signup error:", err);
@@ -181,10 +183,12 @@ app.post("/api/login", async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
+
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
+      });
     }
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, {
@@ -194,23 +198,23 @@ app.post("/api/login", async (req, res) => {
     res
       .cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
         sameSite: "None",
+        secure: true,
       })
       .json({
         success: true,
-        token, // ⭐⭐⭐ ADD THIS LINE
+        token: token, // ⭐ MUST EXIST
         user: {
           id: user._id,
           name: user.name,
           email: user.email,
         },
       });
-  } catch {
-    res.status(500).json({ success: false, message: "Login error" });
+
+  } catch (err) {
+    res.status(500).json({ success: false });
   }
 });
-
 // ====================== Profile ======================
 app.get("/api/profile", authMiddleware, async (req, res) => {
   const user = await User.findById(req.user.id).select("-password");
