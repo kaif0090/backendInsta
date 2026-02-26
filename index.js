@@ -38,16 +38,19 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.options("*", cors());
 
 // ====================== CORS Configuration ======================
-const allowedOrigins = [
-  CORS_ORIGIN,
-  "https://backendinsta-api.onrender.com",
-  "https://instalgram0.netlify.app/"
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://instalgram0.netlify.app",
+    ],
+    credentials: true,
+  })
+);
 
-];
-
+app.options("*", cors());
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
