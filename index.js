@@ -7,13 +7,14 @@ const cookieParser = require("cookie-parser");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const cors = require("cors");
 require("dotenv").config();
 
 // ====================== Environment Variables Validation ======================
 const PORT = process.env.PORT || 3033;
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret_key_change_in_production";
 const MONGO_URI = process.env.MONGO_URI;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
+const CORS_ORIGIN = process.env.CORS_ORIGIN ||"https://instalgram0.netlify.app";
 
 // Validate required environment variables
 if (!MONGO_URI) {
@@ -51,31 +52,25 @@ app.use(
 );
 
 app.options("*", cors());
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (mobile apps/postman)
+      if (!origin) return callback(null, true);
 
-  // Check if origin is in allowed list
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+  next()
+);
 
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  );
-
-  // Handle preflight
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-
-  next();
-});
 
 // ====================== MongoDB ======================
 // Detect if using MongoDB Atlas (contains +srv) or local
