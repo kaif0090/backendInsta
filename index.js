@@ -40,8 +40,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // ====================== CORS Configuration ======================
+const allowedOrigins = [
+  CORS_ORIGIN,
+  "https://backendinsta-api.onrender.com",
+  "https://insta-frontend.vercel.app"
+];
+
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", CORS_ORIGIN);
+  const origin = req.headers.origin;
+
+  // Check if origin is in allowed list
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
   res.header("Access-Control-Allow-Credentials", "true");
   res.header(
     "Access-Control-Allow-Headers",
@@ -143,8 +155,9 @@ app.post("/api/signup", upload.single("img"), async (req, res) => {
     res
       .cookie("token", token, {
         httpOnly: true,
-        secure: false, // localhost
-        sameSite: "Lax",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "None",
+        secure: true,
       })
       .status(201)
       .json({
@@ -181,12 +194,12 @@ app.post("/api/login", async (req, res) => {
     res
       .cookie("token", token, {
         httpOnly: true,
-        secure: false,
-        sameSite: "Lax",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "None",
       })
       .json({
         success: true,
-        message: "Login successful",
+        token, // ⭐⭐⭐ ADD THIS LINE
         user: {
           id: user._id,
           name: user.name,
@@ -217,7 +230,11 @@ app.get("/api/about", authMiddleware, async (req, res) => {
 // ====================== Logout ======================
 app.get("/api/logout", (_, res) => {
   res
-    .clearCookie("token", { sameSite: "Lax", secure: false })
+    .clearCookie("token", {
+      sameSite: "None",
+      secure: true,
+      secure: process.env.NODE_ENV === "production"
+    })
     .json({ success: true, message: "Logged out" });
 });
 
@@ -236,7 +253,7 @@ app.post("/api/reels", authMiddleware, upload.single("file"), async (req, res) =
   });
 
   const populatedReel = await Reel.findById(reel._id).populate('user', 'name img');
-  
+
   res.status(201).json({ success: true, reel: populatedReel });
 });
 
@@ -277,11 +294,11 @@ app.post("/api/reels/:id/like", authMiddleware, async (req, res) => {
     }
 
     await reel.save();
-    
-    res.json({ 
-      success: true, 
-      liked: likeIndex === -1, 
-      likesCount: reel.likesCount 
+
+    res.json({
+      success: true,
+      liked: likeIndex === -1,
+      likesCount: reel.likesCount
     });
   } catch (err) {
     console.error("Like error:", err);
@@ -329,7 +346,7 @@ app.get("/api/reels/:id/comments", async (req, res) => {
     const reel = await Reel.findById(req.params.id)
       .populate('comments.user', 'name img')
       .sort({ 'comments.createdAt': -1 });
-    
+
     if (!reel) {
       return res.status(404).json({ success: false, message: "Reel not found" });
     }
